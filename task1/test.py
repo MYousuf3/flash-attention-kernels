@@ -3,13 +3,16 @@ import torch
 from .attention import CustomSelfAttention
 
 def main(causal=False):
+    # Use CUDA if available, otherwise use CPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     hidden_dim = 128
     num_heads = 8
 
     torch_self_attention = (
         torch.nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, bias=False, batch_first=True)
         .to(torch.float)
-        .to("cuda")
+        .to(device)
         .eval()
     )
 
@@ -20,7 +23,7 @@ def main(causal=False):
     custom_self_attention = (
         CustomSelfAttention(w_q, w_k, w_v, w_o, hidden_dim, num_heads)
         .to(torch.float)
-        .to("cuda")
+        .to(device)
         .eval()
     )
 
@@ -28,10 +31,10 @@ def main(causal=False):
     seq_len = 10
 
     with torch.no_grad():
-        x = torch.randn(batch_size, seq_len, hidden_dim).to(torch.float).to("cuda")
+        x = torch.randn(batch_size, seq_len, hidden_dim).to(torch.float).to(device)
 
         if causal:
-            attn_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool().to("cuda")
+            attn_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool().to(device)
         else:
             attn_mask = None
 
@@ -39,6 +42,8 @@ def main(causal=False):
         custom_out = custom_self_attention(x, causal=causal)
 
         assert torch.allclose(torch_out, custom_out, atol=1e-6)
+        
+    return True
 
 def test():
     assert main()

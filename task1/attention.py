@@ -44,7 +44,29 @@ class CustomSelfAttention(torch.nn.Module):
         ##############################################################
 
         # TODO: Implement the self-attention operation
-        raise NotImplementedError
+        # transforming the heads
+        q_prime = q.view(batch_size, seq_len, self.num_heads, self.head_dim)
+        k_prime = k.view(batch_size, seq_len, self.num_heads, self.head_dim)
+        v_prime = v.view(batch_size, seq_len, self.num_heads, self.head_dim)
+
+        q_prime = q_prime.transpose(1, 2)  
+        k_prime = k_prime.transpose(1, 2)  
+        v_prime = v_prime.transpose(1, 2)  
+
+
+        qk_t = q_prime @ k_prime.transpose(-2, -1)
+
+        root_d = math.sqrt(self.head_dim)
+
+        score = qk_t / root_d
+
+        if causal:
+            mask = torch.triu(torch.ones(seq_len, seq_len, device=x.device), diagonal=1).bool()
+            score = score.masked_fill(mask, float('-inf'))
+
+        attn_weights = F.softmax(score, dim=-1)
+        
+        o = attn_weights @ v_prime
 
         ##############################################################
 
